@@ -248,10 +248,10 @@ def train_helper(model: torchvision.models.resnet.ResNet,
                                  dtype=torch.long).cpu()
     val_all_predicts = torch.empty(size=(dataset_sizes["val"], ),
                                    dtype=torch.long).cpu()
-    print("reach traner helper")
+
     # Train for specified number of epochs.
     for epoch in range(start_epoch, num_epochs):
-        print("epoch = ",epoch)
+
         # Training phase.
         model.train(mode=True)
 
@@ -332,7 +332,7 @@ def train_helper(model: torchvision.models.resnet.ResNet,
         # Store validation diagnostics.
         val_loss = val_running_loss / dataset_sizes["val"]
         val_acc = val_running_corrects / dataset_sizes["val"]
-        print(f"val_loss={val_loss}\n val_acc={val_acc}")
+
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
 
@@ -431,7 +431,7 @@ def train_resnet(
     dataloaders = {
         x: torch.utils.data.DataLoader(dataset=image_datasets[x],
                                        batch_size=batch_size,
-                                       shuffle=(x == "train"),
+                                       shuffle=(x is "train"),
                                        num_workers=num_workers)
         for x in ("train", "val")
     }
@@ -454,7 +454,6 @@ def train_resnet(
 
     # Initialize the model.
     if resume_checkpoint:
-        print("reach resume checkpoint")
         ckpt = torch.load(f=resume_checkpoint_path)
         model.load_state_dict(state_dict=ckpt["model_state_dict"])
         optimizer.load_state_dict(state_dict=ckpt["optimizer_state_dict"])
@@ -482,7 +481,7 @@ def train_resnet(
     # Logging the model after every epoch.
     # Confirm the output directory exists.
     log_csv.parent.mkdir(parents=True, exist_ok=True)
-    print("print done")
+
     with log_csv.open(mode="w") as writer:
         writer.write("epoch,train_loss,train_acc,val_loss,val_acc\n")
         # Train the model.

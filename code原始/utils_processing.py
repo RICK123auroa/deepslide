@@ -4,7 +4,7 @@ Contains all functions for processing.
 
 Authors: Jason Wei, Behnaz Abdollahi, Saeed Hassanpour
 """
-import os
+
 import functools
 import itertools
 import math
@@ -51,9 +51,8 @@ def is_purple(crop: np.ndarray, purple_threshold: int,
     # Find the indexes of pooled satisfying all 3 conditions.
     pooled = pooled[cond1 & cond2 & cond3]
     num_purple = pooled.shape[0]
-    #这里直接跳过，因为我们的数据是处理过了
-    flag = (num_purple > purple_threshold)
-    return True
+
+    return num_purple > purple_threshold
 
 
 ###########################################
@@ -266,42 +265,11 @@ def find_patch_mp(func: Callable[[Tuple[int, int]], int], in_queue: Queue,
         in_queue: Queue containing input data.
         out_queue: Queue to put output in.
     """
-    # ===== 新增：监听1 - 子进程启动（打印进程ID，确认启动）=====
-    pid = os.getpid()  # 获取当前子进程的ID
-    print(f"📌 子进程 [{pid}] 启动 | 开始监听任务队列...")
-    
-    try:
-        while True:
-            # ===== 新增：监听2 - 等待获取任务（打印阻塞状态）=====
-            print(f"📌 子进程 [{pid}] 等待从队列获取任务...")
-            xy = in_queue.get()  # 阻塞获取任务
-            
-            # ===== 新增：监听3 - 收到数据（区分任务/终止信号）=====
-            if xy is None:
-                print(f"📌 子进程 [{pid}] 收到终止信号（None）| 准备退出循环")
-                break  # 退出循环
-            
-            print(f"📌 子进程 [{pid}] 收到任务 | 补丁坐标：{xy}")
-            
-            # ===== 新增：监听4 - 执行任务（捕获异常，避免子进程崩溃）=====
-            try:
-                # 执行find_patch函数，获取处理结果
-                result = func(xy)
-                # 把结果放入输出队列
-                out_queue.put(obj=result)
-                # ===== 新增：监听5 - 任务执行成功 =====
-                print(f"✅ 子进程 [{pid}] 完成任务 | 坐标：{xy} | 结果：{result}（1=保存，0=过滤）")
-            except Exception as e:
-                # ===== 新增：监听6 - 任务执行失败（捕获异常并记录）=====
-                print(f"❌ 子进程 [{pid}] 处理任务失败 | 坐标：{xy} | 错误：{str(e)}")
-                out_queue.put(obj=0)  # 失败时返回0，避免主进程等待
-    
-    except Exception as e:
-        # ===== 新增：监听7 - 子进程全局异常（避免子进程意外崩溃）=====
-        print(f"💥 子进程 [{pid}] 全局异常 | 错误：{str(e)} | 强制退出")
-    finally:
-        # ===== 新增：监听8 - 子进程退出（无论是否异常，都打印退出日志）=====
-        print(f"🔚 子进程 [{pid}] 已退出")
+    while True:
+        xy = in_queue.get()
+        if xy is None:
+            break
+        out_queue.put(obj=func(xy))
 
 
 def find_patch(xy_start: Tuple[int, int], output_folder: Path,
@@ -414,13 +382,6 @@ def produce_patches(input_folder: Path, output_folder: Path,
                       inverse_overlap_factor) + 1
         # Step size, same for x and y.
         step_size = int(patch_size / inverse_overlap_factor)
-        
-        # 新增监听日志3：打印补丁规划（确认任务量）
-        total_patches = x_steps * y_steps
-        print(f"块规划：x方向起始点={x_steps} | y方向起始点={y_steps} | 总块数={total_patches} | 步长={step_size}")
-        if total_patches == 0:
-            print("⚠️  警告：总块 数为0（图像尺寸<块尺寸），跳过该图像")
-            continue
 
         # Create the queues for passing data back and forth.
         in_queue = Queue()
@@ -442,15 +403,10 @@ def produce_patches(input_folder: Path, output_folder: Path,
                         patch_size=patch_size), in_queue, out_queue))
             for __ in range(num_workers)
         ]
-        # 新增监听日志4：打印进程创建结果
-        print(f"成功创建 {len(processes)} 个子进程 | 进程ID列表：{[p.pid for p in processes]}")
-        print("开始启动子进程...")
         for p in processes:
             p.daemon = True
             p.start()
-        # 新增监听日志：确认进程启动状态
-        alive_processes = [p.pid for p in processes if p.is_alive()]
-        print(f"子进程启动完成 | 存活进程数：{len(alive_processes)} | 存活PID：{alive_processes}")
+
         # Put the (x, y) coordinates in the input queue.
         for xy in itertools.product(range(0, x_steps * step_size, step_size),
                                     range(0, y_steps * step_size, step_size)):
@@ -465,11 +421,6 @@ def produce_patches(input_folder: Path, output_folder: Path,
         # Join the processes as they finish.
         for p in processes:
             p.join(timeout=1)
-            # 新增监听日志：打印进程退出状态
-            if p.is_alive():
-                print(f"❌ 进程 {p.pid} 未正常退出（超时）")
-            else:
-                print(f"✅ 进程 {p.pid} 已正常退出")
 
         if by_folder:
             print(f"{image_loc}: num outputted windows: {num_patches}")

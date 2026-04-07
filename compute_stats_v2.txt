@@ -24,7 +24,7 @@ class MyDataset(torch.utils.data.Dataset):
     Attributes:
         data: List of the string image filenames.
     """
-    def __init__(self, folder: Path,image_ext='jpeg') -> None:
+    def __init__(self, folder: Path) -> None:
         """
     Create the MyDataset object.
 
@@ -32,7 +32,7 @@ class MyDataset(torch.utils.data.Dataset):
     folder: Path to the images.
         """
         self.data = []
-        self.image_ext = image_ext
+
         for file in folder.rglob(f"*{image_ext}"):
             if not file.name.startswith("."):
                 self.data.append(file)

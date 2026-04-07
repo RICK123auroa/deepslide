@@ -1,0 +1,11 @@
+imageio
+numpy>=1.16.0
+opencv-python
+pandas
+Pillow
+scikit-image
+scikit-learn
+scipy
+#pip install torch torchvision
+#sudo apt-get install openslide-tools
+# or pip install python-openslide

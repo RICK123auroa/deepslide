@@ -25,20 +25,16 @@ parser = argparse.ArgumentParser(
 # Must contain subfolders of images labelled by class.
 # If your two classes are 'a' and 'n', you must have a/*.jpg with the images in class a and
 # n/*.jpg with the images in class n.
-parser.add_argument(
-    "--all_wsi",
-    type=Path,
-    default=Path("all_wsi"),
-    help="Location of the WSI organized in subfolders by class")
+
 # For splitting into validation set.
 parser.add_argument("--val_wsi_per_class",
                     type=int,
-                    default=625,
+                    default=20,
                     help="Number of WSI per class to use in validation set")
 # For splitting into testing set, remaining images used in train.
 parser.add_argument("--test_wsi_per_class",
                     type=int,
-                    default=100,
+                    default=30,
                     help="Number of WSI per class to use in test set")
 # When splitting, do you want to move WSI or copy them?
 parser.add_argument(
@@ -60,7 +56,7 @@ parser.add_argument("--num_workers",
 # Default shape for ResNet in PyTorch.
 parser.add_argument("--patch_size",
                     type=int,
-                    default=256,
+                    default=224,
                     help="Size of the patches extracted from the WSI")
 
 ##########################################
@@ -133,7 +129,7 @@ parser.add_argument(
 # Target number of training patches per class.
 parser.add_argument("--num_train_per_class",
                     type=int,
-                    default=10000,
+                    default=80000,
                     help="Target number of training samples per class")
 
 # Only looks for purple images and filters whitespace.
@@ -154,7 +150,7 @@ parser.add_argument(
 parser.add_argument(
     "--purple_scale_size",
     type=int,
-    default=1,
+    default=15,
     help="Scalar to use for reducing image to check for purple.")
 
 # Sliding window overlap factor (for testing).
@@ -175,7 +171,7 @@ parser.add_argument(
 
 parser.add_argument("--image_ext",
                     type=str,
-                    default="jpeg",
+                    default="jpg",
                     help="Image extension for saving patches")
 
 # Produce patches for testing and validation by folder.  The code only works
@@ -192,28 +188,28 @@ parser.add_argument(
 parser.add_argument(
     "--color_jitter_brightness",
     type=float,
-    default=0.0,
+    default=0.5,
     help=
     "Random brightness jitter to use in data augmentation for ColorJitter() transform"
 )
 parser.add_argument(
     "--color_jitter_contrast",
     type=float,
-    default=0.0,
+    default=0.5,
     help=
     "Random contrast jitter to use in data augmentation for ColorJitter() transform"
 )
 parser.add_argument(
     "--color_jitter_saturation",
     type=float,
-    default=0.0,
+    default=0.5,
     help=
     "Random saturation jitter to use in data augmentation for ColorJitter() transform"
 )
 parser.add_argument(
     "--color_jitter_hue",
     type=float,
-    default=0.0,
+    default=0.2,
     help=
     "Random hue jitter to use in data augmentation for ColorJitter() transform"
 )
@@ -355,7 +351,7 @@ args = parser.parse_args()
 
 # Device to use for PyTorch code.
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-#这里是只能使用单GPU的原因
+
 # Automatically read in the classes.
 classes = get_classes(folder=args.all_wsi)
 num_classes = len(classes)
@@ -364,13 +360,9 @@ num_classes = len(classes)
 train_patches = args.train_folder.joinpath("train")
 val_patches = args.train_folder.joinpath("val")
 
-if __name__ == "__main__":
-    # Compute the mean and standard deviation of the image patches from the specified folder.
-    path_mean, path_std = compute_stats(folderpath=train_patches,
-                                        image_ext=args.image_ext)
-else:
-    path_mean = [0.0, 0.0, 0.0]
-    path_std = [8.517697194839028e-20, 8.354405279572525e-20, 8.677927895604232e-20]
+# Compute the mean and standard deviation of the image patches from the specified folder.
+path_mean, path_std = compute_stats(folderpath=train_patches,
+                                    image_ext=args.image_ext)
 
 # Only used is resume_checkpoint is True.
 resume_checkpoint_path = args.checkpoints_folder.joinpath(args.checkpoint_file)
@@ -386,25 +378,25 @@ threshold_search = (0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9)
 
 # For visualization.
 # This order is the same order as your sorted classes.
-colors = ("red", "blue", "green", "purple", "orange", "black", "pink",
+colors = ("red", "white", "blue", "green", "purple", "orange", "black", "pink",
           "yellow")
-if __name__ =="__main__":
-    # Print the configuration.
-    # Source: https://stackoverflow.com/questions/44689546/how-to-print-out-a-dictionary-nicely-in-python/44689627
-    # chr(10) and chr(9) are ways of going around the f-string limitation of
-    # not allowing the '\' character inside.
-    print(f"###############     CONFIGURATION     ###############\n"
-        f"{chr(10).join(f'{k}:{chr(9)}{v}' for k, v in vars(args).items())}\n"
-        f"device:\t{device}\n"
-        f"classes:\t{classes}\n"
-        f"num_classes:\t{num_classes}\n"
-        f"train_patches:\t{train_patches}\n"
-        f"val_patches:\t{val_patches}\n"
-        f"path_mean:\t{path_mean}\n"
-        f"path_std:\t{path_std}\n"
-        f"resume_checkpoint_path:\t{resume_checkpoint_path}\n"
-        f"log_csv:\t{log_csv}\n"
-        f"eval_model:\t{eval_model}\n"
-        f"threshold_search:\t{threshold_search}\n"
-        f"colors:\t{colors}\n"
-        f"\n#####################################################\n\n\n")
+
+# Print the configuration.
+# Source: https://stackoverflow.com/questions/44689546/how-to-print-out-a-dictionary-nicely-in-python/44689627
+# chr(10) and chr(9) are ways of going around the f-string limitation of
+# not allowing the '\' character inside.
+print(f"###############     CONFIGURATION     ###############\n"
+      f"{chr(10).join(f'{k}:{chr(9)}{v}' for k, v in vars(args).items())}\n"
+      f"device:\t{device}\n"
+      f"classes:\t{classes}\n"
+      f"num_classes:\t{num_classes}\n"
+      f"train_patches:\t{train_patches}\n"
+      f"val_patches:\t{val_patches}\n"
+      f"path_mean:\t{path_mean}\n"
+      f"path_std:\t{path_std}\n"
+      f"resume_checkpoint_path:\t{resume_checkpoint_path}\n"
+      f"log_csv:\t{log_csv}\n"
+      f"eval_model:\t{eval_model}\n"
+      f"threshold_search:\t{threshold_search}\n"
+      f"colors:\t{colors}\n"
+      f"\n#####################################################\n\n\n")

@@ -17,40 +17,7 @@ from torchvision.transforms import ToTensor
 
 Image.MAX_IMAGE_PIXELS = None
 
-class MyDataset(torch.utils.data.Dataset):
-    """
-    Creates a dataset by reading images.
 
-    Attributes:
-        data: List of the string image filenames.
-    """
-    def __init__(self, folder: Path,image_ext='jpeg') -> None:
-        """
-    Create the MyDataset object.
-
-    Args:
-    folder: Path to the images.
-        """
-        self.data = []
-        self.image_ext = image_ext
-        for file in folder.rglob(f"*{image_ext}"):
-            if not file.name.startswith("."):
-                self.data.append(file)
-
-    def __getitem__(self, index: int) -> torch.Tensor:
-        """
-            Finds the specified image and outputs in correct format.
-
-            Args:
-                index: Index of the desired image.
-
-            Returns:
-                A PyTorch Tensor in the correct color space.
-        """
-        return ToTensor()(Image.open(self.data[index]).convert("RGB"))
-
-    def __len__(self) -> int:
-        return len(self.data)
 def compute_stats(folderpath: Path,
                   image_ext: str) -> Tuple[List[float], List[float]]:
     """
@@ -66,7 +33,40 @@ def compute_stats(folderpath: Path,
     This implementation is based on the discussion from: 
         https://discuss.pytorch.org/t/about-normalization-using-pre-trained-vgg16-networks/23560/9
     """
-    
+    class MyDataset(torch.utils.data.Dataset):
+        """
+        Creates a dataset by reading images.
+
+        Attributes:
+            data: List of the string image filenames.
+        """
+        def __init__(self, folder: Path) -> None:
+            """
+            Create the MyDataset object.
+
+            Args:
+                folder: Path to the images.
+            """
+            self.data = []
+
+            for file in folder.rglob(f"*{image_ext}"):
+                if not file.name.startswith("."):
+                    self.data.append(file)
+
+        def __getitem__(self, index: int) -> torch.Tensor:
+            """
+            Finds the specified image and outputs in correct format.
+
+            Args:
+                index: Index of the desired image.
+
+            Returns:
+                A PyTorch Tensor in the correct color space.
+            """
+            return ToTensor()(Image.open(self.data[index]).convert("RGB"))
+
+        def __len__(self) -> int:
+            return len(self.data)
 
     def online_mean_and_sd(
         loader: torch.utils.data.DataLoader, report_interval: int=1000

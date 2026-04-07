@@ -1,0 +1,215 @@
+=====
+查看smi
+while($true){nvidia-smi; Start-Sleep -Seconds 5; cls}
+
+======
+目前数据特点是
+大小 ：768x768
+直接是特征病理部分
+
+======
+--patch_size :: ResNet 模型的默认输入尺寸 (补丁大小)
+--num_train_per_class ：： 每类训练补丁的目标数量
+--slide_overlap ：： 详细解释滑动窗口重叠系数（测试阶段
+--image_ext ：： 默认 jpg，指定补丁保存的图像格式
+--by_folder ：： 说明当前代码仅支持 “按文件夹生成测试 / 验证补丁”
+
+======
+--val_wsi_per_class :: 该参数用于划分验证集
+--test_wsi_per_class :: 说明该参数用于划分测试集，剩余图像自动作为训练集
+--keep_orig_copy  :: 该参数控制 “移动” 还是 “复制” WSI
+--num_workers  :: 说明该参数是 IO 进程数 （4 - 8）
+待创建的文件夹名称
+
+# Folders of patches by WSI in training set, used for finding training accuracy at WSI level.
+这行注释下的三个参数
+模型训练的自动构建输入文件夹
+
+说明这些文件夹存储 “按 WSI 划分的补丁”，用于计算WSI 级别的准确率（而非单补丁准确率）；
+
+--type_histopath  ：： True 只保留紫色的病理组织区域，过滤空白背景
+
+--purple_threshold ：： 判定为 “紫色区域” 的最小紫点数量
+
+--purple_scale_size ：： 说明检测紫点时的图像缩小系数（加速计算）
+
+--gen_val_patches_overlap_factor ：：说明是验证集补丁生成的重叠系数
+
+========数据增强部分===========
+--color_jitter_brightness ：： 增加亮度
+--color_jitter_contrast  ：： 增加对比度
+--color_jitter_saturation ：： 调整饱和度
+--color_jitter_hue ：： 色调参数 （不宜过大）
+
+========【模型训练】核心超参数=======
+--num_epochs   ：： 模型训练轮数
+--num_layers ：： ResNet 模型的可选层数
+--learning_rate ：： 默认 0.001，梯度下降的学习率
+--batch_size   ：： 每次训练的批次大小
+--weight_decay ：： 默认 1e-4，权重衰减（L2 正则），防止过拟合
+--learning_rate_decay ：： 默认 0.85，每轮学习率衰减系数（如 0.001 → 0.00085 → 0.0007225...），让训练后期更稳定
+--resume_checkpoint ：： 默认 False，是否从检查点恢复训练
+--save_interval  ：： 默认 1，每训练 1 轮保存一次模型检查点。
+--checkpoints_folder ：： 模型检查点的保存文件夹
+--checkpoint_file  ：： 说明是恢复训练时加载的检查点文件名
+--pretrain    ：： 说明是否使用 ImageNet 预训练权重
+--log_folder  ::  默认 logs/，存储训练日志（如损失、准确率）
+
+=======(预测)结果存储参数============
+--auto_select ::  说明是否自动选择验证集准确率最高的模型
+
+# Where to put the training prediction CSV files.
+三个参数
+预测结果 CSV 文件的存储文件夹 
+
+=======【评估】推理 & 可视化参数============
+三个参数
+不同置信度阈值下的 WSI 推理结果文件夹
+
+=======解析参数 & 初始化派生变量============
+args = parser.parse_args()
+
+all_wsi参数怎么定义
+
+计算类别数量（比如二分类则 num_classes=2）。
+
+train_patches val_patches 注释：说明是模型训练的输入路径；
+
+path_mean, path_std 说明计算图像补丁的均值和标准差
+
+resume_checkpoint_path 说明仅恢复训练时使用
+log_csv 说明生成带时间戳的日志文件名
+eval_model自动选择模型时该变量无效
+threshold_search寻找过滤噪声的最佳置信度阈值
+colors说明可视化用的颜色
+
+
+===2026/02/11====
+###############     CONFIGURATION     ###############
+all_wsi:        all_wsi
+val_wsi_per_class:      625
+test_wsi_per_class:     100
+keep_orig_copy: True
+num_workers:    8
+patch_size:     192
+wsi_train:      wsi_train
+wsi_val:        wsi_val
+wsi_test:       wsi_test
+labels_train:   labels_train.csv
+labels_val:     labels_val.csv
+labels_test:    labels_test.csv
+train_folder:   train_folder
+patches_eval_train:     patches_eval_train
+patches_eval_val:       patches_eval_val
+patches_eval_test:      patches_eval_test
+num_train_per_class:    10000
+type_histopath: True
+purple_threshold:       100
+purple_scale_size:      1
+slide_overlap:  3
+gen_val_patches_overlap_factor: 1.5
+image_ext:      jpeg
+by_folder:      True
+color_jitter_brightness:        0.0
+color_jitter_contrast:  0.0
+color_jitter_saturation:        0.0
+color_jitter_hue:       0.0
+num_epochs:     20
+num_layers:     18
+learning_rate:  0.001
+batch_size:     16
+weight_decay:   0.0001
+learning_rate_decay:    0.85
+resume_checkpoint:      False
+save_interval:  1
+checkpoints_folder:     checkpoints
+checkpoint_file:        xyz.pt
+pretrain:       False
+log_folder:     logs
+auto_select:    True
+preds_train:    preds_train
+preds_val:      preds_val
+preds_test:     preds_test
+inference_train:        inference_train
+inference_val:  inference_val
+inference_test: inference_test
+vis_train:      vis_train
+vis_val:        vis_val
+vis_test:       vis_test
+device: cuda:0
+classes:        ['Lung-Benign_Tissue', 'Lung_Adenocarcinoma', 'Lung_Squamous_Cell_Carcinoma']
+num_classes:    3
+train_patches:  train_folder\train
+val_patches:    train_folder\val
+path_mean:      [0.0, 0.0, 0.0]
+path_std:       [8.517697194839028e-20, 8.354405279572525e-20, 8.677927895604232e-20]
+resume_checkpoint_path: checkpoints\xyz.pt
+log_csv:        logs\log_2132026_205519.csv
+eval_model:     checkpoints\xyz.pt
+threshold_search:       (0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9)
+colors: ('red', 'white', 'blue', 'green', 'purple', 'orange', 'black', 'pink', 'yellow')
+
+#####################################################
+
++++++ Running 3_train.py +++++
+3 classes: ['Lung-Benign_Tissue', 'Lung_Adenocarcinoma', 'Lung_Squamous_Cell_Carcinoma']
+num train images 71152
+num val images 23760
+CUDA is_available: True
+train_folder: train_folder
+num_epochs: 20
+num_layers: 18
+learning_rate: 0.001
+batch_size: 16
+weight_decay: 0.0001
+learning_rate_decay: 0.85
+resume_checkpoint: False
+resume_checkpoint_path (only if resume_checkpoint is true): checkpoints\xyz.pt
+save_interval: 1
+output in checkpoints_folder: checkpoints
+pretrain: False
+log_csv: logs\log_2172026_4017.csv
+
+Predicted                     Lung-Benign_Tissue  Lung_Adenocarcinoma  Lung_Squamous_Cell_Carcinoma
+Actual
+Lung-Benign_Tissue                          0.32                 0.40                          0.28
+Lung_Adenocarcinoma                         0.32                 0.39                          0.28
+Lung_Squamous_Cell_Carcinoma                0.33                 0.39                          0.28
+Predicted                     Lung-Benign_Tissue  Lung_Adenocarcinoma  Lung_Squamous_Cell_Carcinoma
+Actual
+Lung-Benign_Tissue                          0.00                 1.00                          0.00
+Lung_Adenocarcinoma                         0.00                 1.00                          0.00
+Lung_Squamous_Cell_Carcinoma                0.00                 1.00                          0.00
+val_loss=1.1009632718282114
+ val_acc=0.15824915824915825
+Epoch 0 with lr 0.000850000000000: t_loss: 1.1003 t_acc: 0.3337 v_loss: 1.1010 v_acc: 0.1582
+
+epoch =  1
+Predicted                     Lung-Benign_Tissue  Lung_Adenocarcinoma  Lung_Squamous_Cell_Carcinoma
+Actual
+Lung-Benign_Tissue                          0.36                 0.32                          0.32
+Lung_Adenocarcinoma                         0.36                 0.32                          0.32
+Lung_Squamous_Cell_Carcinoma                0.36                 0.32                          0.32
+Predicted                     Lung-Benign_Tissue  Lung_Adenocarcinoma  Lung_Squamous_Cell_Carcinoma
+Actual
+Lung-Benign_Tissue                          0.00                 1.00                          0.00
+Lung_Adenocarcinoma                         0.00                 1.00                          0.00
+Lung_Squamous_Cell_Carcinoma                0.00                 1.00                          0.00
+val_loss=1.1017182796491116
+ val_acc=0.15824915824915825
+Epoch 1 with lr 0.000722500000000: t_loss: 1.0987 t_acc: 0.3326 v_loss: 1.1017 v_acc: 0.1582
+
+epoch =  19
+Predicted                     Lung-Benign_Tissue  Lung_Adenocarcinoma  Lung_Squamous_Cell_Carcinoma
+Actual
+Lung-Benign_Tissue                          0.36                 0.43                          0.21
+Lung_Adenocarcinoma                         0.36                 0.43                          0.21
+Lung_Squamous_Cell_Carcinoma                0.36                 0.43                          0.21
+Predicted                     Lung-Benign_Tissue  Lung_Adenocarcinoma  Lung_Squamous_Cell_Carcinoma
+Actual
+Lung-Benign_Tissue                          0.00                 1.00                          0.00
+Lung_Adenocarcinoma                         0.00                 1.00                          0.00
+Lung_Squamous_Cell_Carcinoma                0.00                 1.00                          0.00
+val_loss=1.0988660874190155
+ val_acc=0.15824915824915825
+Epoch 19 with lr 0.000038759531085: t_loss: 1.0986 t_acc: 0.3323 v_loss: 1.0989 v_acc: 0.1582 
